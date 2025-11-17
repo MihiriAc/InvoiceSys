@@ -1,5 +1,5 @@
 <?php
-// ✅ Show errors for debugging
+// ✅ Show all errors for debugging
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
@@ -8,8 +8,9 @@ include 'db.php';
 
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Writer\Pdf\Mpdf;
+use PhpOffice\PhpSpreadsheet\Worksheet\PageSetup;
 
-// --- Check document number ---
+// --- Validate input ---
 if (!isset($_GET['doc_no'])) {
     die("❌ Missing document number. Example usage: export_pdf.php?doc_no=1");
 }
@@ -35,13 +36,40 @@ if (!file_exists($excelPath)) {
     die("❌ Excel file not found at: $excelPath");
 }
 
-// --- Define PDF output path ---
-$pdfPath = "$exportFolder/{$row['custom_no']}.pdf";
 
-// --- Load Excel and export to PDF ---
+
+// --- Load Excel and prepare for PDF export ---
 $spreadsheet = IOFactory::load($excelPath);
+$sheet = $spreadsheet->getActiveSheet();
+
+// --- Adjust print settings ---
+$sheet->getPageSetup()
+    ->setPaperSize(PageSetup::PAPERSIZE_A4)
+    ->setOrientation(PageSetup::ORIENTATION_PORTRAIT)
+    ->setFitToWidth(1)
+    ->setFitToHeight(1); // One page only
+
+// Optional margins
+$sheet->getPageMargins()->setTop(0.25);
+$sheet->getPageMargins()->setRight(0.25);
+$sheet->getPageMargins()->setLeft(0.25);
+$sheet->getPageMargins()->setBottom(0.25);
+
+// Optional center
+$sheet->getPageSetup()->setHorizontalCentered(true);
+
+// Define print area (only the used cells)
+$highestColumn = $sheet->getHighestColumn();
+$highestRow = $sheet->getHighestRow();
+$sheet->getPageSetup()->setPrintArea("A1:{$highestColumn}{$highestRow}");
+
+$pdfPath = "$exportFolder/{$row['custom_no']}.pdf";
+// --- Save PDF ---
 $writer = new Mpdf($spreadsheet);
 $writer->save($pdfPath);
 
+
+
 echo "✅ PDF exported successfully at: <b>$pdfPath</b>";
+
 ?>
